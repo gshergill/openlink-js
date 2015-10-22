@@ -1,6 +1,5 @@
 BIND_PATH = '/http-bind';
 BOSH_URL = window.location.protocol + '//' + window.location.hostname + BIND_PATH;
-
 App = {};
 Session = {};
 App.start = function(options) {
@@ -78,6 +77,9 @@ App.callHandler = function(callEv, changed) {
 App.disconnected = function() {
     $('#gc_logout_window').hide();
     $('#gc_login_window').show();
+    $('#gc_profile_list ul').empty();
+    $('#gc_interest_list ul').empty();
+    $('#gc_feature_list ul').empty();
 
     Session.connection.openlink.removeCallHandler(Session.callHandlerId);
     delete Session.callHandlerId;
@@ -124,8 +126,8 @@ $('#gc_get_profiles').click(function() {
             var profileText = '<li>'
                 + profile.id + ' - '
                 + profile.device + ' - '
-                + '<a href="#" class="gc_get_features" id="gc_get_features_'+ profile.id +'">Get features</a>' + ' - '
-                + '<a href="#" class="gc_get_interests" id="gc_get_interests_'+ profile.id +'">Get interests</a>';
+                + '<a href="#" class="gc_get_features" id="gc_get_features_'+ profile.id +'" data-device="' + profile.device + '">Get features</a>' + ' - '
+                + '<a href="#" class="gc_get_interests" id="gc_get_interests_'+ profile.id +'" data-device="' + profile.device + '">Get interests</a>';
 
             if (profile.actions.length > 0) {
                 profileText += '<ul>';
@@ -149,19 +151,66 @@ $('#gc_get_profiles').click(function() {
     });
 });
 
+$('#gc_get_profiles_vms').click(function() {
+    Session.connection.openlink.getProfiles(getVMSSystem(), function(profiles) {
+        $('#gc_profile_list ul').empty();
+        for (var profileId in profiles) {
+            var profile = profiles[profileId];
+
+            var profileText = '<li>'
+                + profile.id + ' - '
+                + profile.device + ' - '
+                + '<a href="#" class="gc_get_features" id="gc_get_features_'+ profile.id +'" data-device="' + profile.device + '">Get features</a>' + ' - '
+                + '<a href="#" class="gc_get_interests" id="gc_get_interests_'+ profile.id +'" data-device="' + profile.device + '">Get interests</a>';
+
+            if (profile.actions.length > 0) {
+                profileText += '<ul>';
+                for (var _i = 0; _i < profile.actions.length; _i++) {
+                    profileText += '<li>Action: '
+                        + profile.actions[_i].id + ' - '
+                        + profile.actions[_i].label
+                        + '</li>';
+                }
+                profileText += '</ul>';
+            } else {
+                profileText += '<ul><li>No actions found</li></ul>';
+            }
+
+            profileText += '</li>';
+
+            $('#gc_profiles ul:first').append(profileText);
+
+            var recordText = '<li>' + profile.id + ' - '
+                + '<a href="#" class="gc_record" id="gc_record_' + profile.id + '">Record</a> -'
+                + '<input type="text" maxlength="50" id="record_label_' + profile.id + '" placeholder="Label"></label>'
+                + '<div id="recording_number">'
+                + '</div>';
+            recordText += '</li>';
+
+            $('#gc_recording ul:first').append(recordText);
+        }
+    }, function(message) {
+        alert(message);
+    });
+});
+
 $('#gc_profiles').on('click', 'a.gc_get_interests', function(e) {
     e.preventDefault();
     if (e.target.id) {
         var profileId = e.target.id.replace('gc_get_interests_', '');
     }
-    getInterestsClick(profileId);
+    if (e.target.dataset.device) {
+        var device = e.target.dataset.device;
+    }
+    getInterestsClick(profileId, device);
 });
 
-function getInterestsClick(profileId) {
-    $('#gc_interest_list ul').empty();
-    $('#gc_interest_list ul').append('<li>Loading interests</li>');
-    Session.connection.openlink.getInterests(getDefaultSystem() , profileId, function(interests) {
-        $('#gc_interest_list ul').empty();
+function getInterestsClick(profileId, device) {
+    // $('#gc_interest_list ul').empty();
+    // $('#gc_interest_list ul').append('<li>Loading interests</li>');
+    var system = (device === 'vmstsp'? getVMSSystem() : getDefaultSystem());
+    Session.connection.openlink.getInterests(system, profileId, function(interests) {
+        // $('#gc_interest_list ul').empty();
         for (var elem in interests) {
             $('#gc_interest_list ul').append('<li>'
                 + interests[elem].id + ' - '
@@ -187,21 +236,35 @@ $('#gc_profiles').on('click', 'a.gc_get_features', function(e) {
     if (e.target.id) {
         var profileId = e.target.id.replace('gc_get_features_', '');
     }
-    getFeaturesClick(profileId);
+    if (e.target.dataset.device) {
+        var device = e.target.dataset.device;
+    }
+    getFeaturesClick(profileId, device);
 });
 
-function getFeaturesClick(profileId) {
-    $('#gc_feature_list ul').empty();
-    $('#gc_feature_list ul').append('<li>Loading features</li>');
-    Session.connection.openlink.getFeatures(getDefaultSystem(), profileId, function(features) {
-        $('#gc_feature_list ul').empty();
+function getFeaturesClick(profileId, device) {
+    // $('#gc_feature_list ul').empty();
+    // $('#gc_feature_list ul').append('<li>Loading features</li>');
+    var system = (device === 'vmstsp'? getVMSSystem() : getDefaultSystem());
+    Session.connection.openlink.getFeatures(system, profileId, function(features) {
+        // $('#gc_feature_list ul').empty();
+        var featureText = '<li>'
+            + profileId;
+
+        featureText += '<ul>';
         for (var elem in features) {
-            $('#gc_feature_list ul').append('<li>'
+            featureText += '<li>'
                 + features[elem].id + ' - '
                 + features[elem].type + ' - '
-                + features[elem].label
-                + '</li>');
+                + features[elem].label;
+            featureText += (features[elem].id.indexOf('MK') > -1? ' - <a href="#" class="gc_feature_playback" id="gc_feature_playback_' + profileId + '_' + features[elem].id + '">Playback</a><div id="playback_number_' + features[elem].id + '"</li>':'</li>');
         }
+        featureText += '</ul>';
+
+        featureText += '</li>';
+
+        $('#gc_feature_list ul:first').append(featureText);
+
     }, function(message) {
         alert(message);
     });
@@ -266,8 +329,72 @@ $('#gc_request_action').click(function() {
     });
 });
 
+$('#gc_get_history').click(function() {
+    $('#gc_history_list ul').empty();
+    $('#gc_history_list ul').append('<li>Loading history</li>');
+    Session.connection.openlink.getCallHistory(getDefaultSystem(), "", 
+        "", "", "out", "", "", "0", "50", function(history) {
+        $('#gc_history_list ul').empty();
+        if (history) {
+            console.log(history);
+        }
+
+        for (var callid in history) {
+            var call = history[callid];
+
+            var historyText = call.id + '<ul>';
+
+            for (var property in call) {
+                historyText += '<li>' + property + ': ' + call[property] + '</li>';
+            }
+
+            historyText += '</ul>';
+            $('#gc_history_list ul:first').append(historyText);
+        }
+
+    },function(message) {
+        alert(message);
+    });
+});
+
+// VMS stuff
+$('#gc_recording').on('click', 'a.gc_record', function(e) {
+    e.preventDefault();
+    console.log('Requesting record');
+    if (e.target.id) {
+        var profileId = e.target.id.replace('gc_record_', '');
+        var label = $('#record_label_' + profileId).val();
+    }
+    Session.connection.openlink.manageVoiceMessageRecord(getVMSSystem(), profileId, label, function(recordFeatures) {
+        console.log(recordFeatures);
+        $('#recording_number').text('Record extension: ' + recordFeatures.exten);
+    }, function(message) {
+        alert(message);
+    });
+});
+$('#gc_feature_list').on('click', 'a.gc_feature_playback', function(e) {
+    e.preventDefault();
+    console.log("Requesting playback");
+    if (e.target.id) {
+        var string = e.target.id.replace('gc_feature_playback_', '');
+        string = string.split('_');
+        var profileId = string[0] + '_' + string[1];
+        var feature = string[2];
+    }
+    Session.connection.openlink.manageVoiceMessagePlayback(getVMSSystem(), profileId, feature, function(playbackFeatures) {
+        console.log(playbackFeatures);
+        $('#playback_number_' + feature).text('Playback extension: ' + playbackFeatures.exten);
+    }, function(message) {
+        alert(message);
+    });
+});
+
 function getDefaultSystem() {
     return App.options.app.system + '.' + Session.connection.domain;
+}
+
+function getVMSSystem() {
+    return 'vmstsp.' + Session.connection.domain;
 }
 
 function connect(data) {

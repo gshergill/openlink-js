@@ -48,13 +48,14 @@
             </ul>
         </div>
         <div class="gc_btn_holder"><input type="button" id="gc_get_profiles" value="Get profiles"></div>
+        <div class="gc_btn_holder"><input type="button" id="gc_get_profiles_vms" value="Get profiles VMS"></div>
     </div>
 
     <h2>Features</h2>
     <div id="gc_features">
         <div class="gc_list" id="gc_feature_list">
             <ul>
-                <li>No features found</li>
+                <!-- <li>No features found</li> -->
             </ul>
         </div>
     </div>
@@ -63,7 +64,25 @@
     <div id="gc_interests">
         <div class="gc_list" id="gc_interest_list">
             <ul>
-                <li>No interests found</li>
+                <!-- <li>No interests found</li> -->
+            </ul>
+        </div>
+    </div>
+
+    <h2>Voice Message Recording</h2>
+    <div id="gc_recording">
+        <ul>
+        </ul>
+    </div>
+
+    <h2>Call History</h2>
+    <div id="gc_call_history">
+        <div class="gc_btn_holder">
+            <input type="button" id="gc_get_history" value="Get History">
+        </div>
+        <div class="gc_list" id="gc_history_list">
+            <ul>
+                <li>No history found</li>
             </ul>
         </div>
     </div>
@@ -107,11 +126,11 @@
     App.start({
         app: {
             debug: true,
-            xmpp_domain: 'xmpp.example.com',
+            xmpp_domain: 'centoscas',
             xmpp_resource: 'office',
-            username: '',
-            password: '',
-            system: 'vmstsp',
+            username: 'user0',
+            password: 'user0',
+            system: 'cisco2',
             autologon: false
         }
     });
