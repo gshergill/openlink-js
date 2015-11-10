@@ -1,5 +1,6 @@
 BIND_PATH = '/http-bind';
 BOSH_URL = window.location.protocol + '//' + window.location.hostname + BIND_PATH;
+//BOSH_URL = 'http://loki.gltd.net:7070/http-bind/';
 App = {};
 Session = {};
 App.start = function(options) {
@@ -36,6 +37,7 @@ App.connected = function(connection) {
     Session.connection = connection;
     $('#gc_login_window').hide();
     $('#gc_logout_window').show();
+    Session.connection.openlink.profiles = {};
 
     Session.connection.openlink.sendPresence();
 
@@ -80,6 +82,7 @@ App.disconnected = function() {
     $('#gc_profile_list ul').empty();
     $('#gc_interest_list ul').empty();
     $('#gc_feature_list ul').empty();
+    $('#gc_recording ul').empty();
 
     Session.connection.openlink.removeCallHandler(Session.callHandlerId);
     delete Session.callHandlerId;
@@ -147,7 +150,7 @@ $('#gc_get_profiles').click(function() {
             $('#gc_profiles ul:first').append(profileText);
         }
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
 
@@ -156,6 +159,7 @@ $('#gc_get_profiles_vms').click(function() {
         $('#gc_profile_list ul').empty();
         for (var profileId in profiles) {
             var profile = profiles[profileId];
+            console.log(profile);
 
             var profileText = '<li>'
                 + profile.id + ' - '
@@ -187,10 +191,21 @@ $('#gc_get_profiles_vms').click(function() {
                 + '</div>';
             recordText += '</li>';
 
-            $('#gc_recording ul:first').append(recordText);
+            if (profile.device === "vmstsp") {
+                $('#gc_recording ul:first').append(recordText);
+            };
+
         }
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
+    });
+});
+
+$('#gc_get_profiles_gtx').click(function() {
+    Session.connection.gtx.getProfiles(getDefaultSystem(), function(profiles) {
+        console.log(profiles);
+    }, function(message) {
+        console.log("ALERT:",message);
     });
 });
 
@@ -211,24 +226,42 @@ function getInterestsClick(profileId, device) {
     var system = (device === 'vmstsp'? getVMSSystem() : getDefaultSystem());
     Session.connection.openlink.getInterests(system, profileId, function(interests) {
         // $('#gc_interest_list ul').empty();
+        var vmstsp;
         for (var elem in interests) {
-            $('#gc_interest_list ul').append('<li>'
-                + interests[elem].id + ' - '
-                + interests[elem].type + ' - '
-                + interests[elem].label + ' - '
-                + '<a href="#" class="gc_subscribe_interest" id="gc_subscribe_interest_'+ interests[elem].id +'">Subscribe</a>' + ' - '
-                + '<a href="#" class="gc_unsubscribe_interest" id="gc_unsubscribe_interest_'+ interests[elem].id +'">Unsubscribe</a>'
+            if (!$("#interest_" + interests[elem].id).html()) {
+                $('#gc_interest_list ul').append('<div id="interest_' + interests[elem].id + '"><li>'
+                    + interests[elem].id + ' - '
+                    + interests[elem].type + ' - '
+                    + interests[elem].label + ' - '
+                    + '<a href="#" class="gc_subscribe_interest" id="gc_subscribe_interest_'+ interests[elem].id +'">Subscribe</a>' + ' - '
+                    + '<a href="#" class="gc_unsubscribe_interest" id="gc_unsubscribe_interest_'+ interests[elem].id +'">Unsubscribe</a>'
 
-                + '<div id="gc_makecall">'
-                + '<a href="#" class="gc_makecall_interest" id="gc_makecall_interest_'+ interests[elem].id +'">Make Call</a>' + ' - '
-                + '<input type="text" maxlength="50" value="" id="makecall_extension" placeholder="Extension">'
-                + '</div>'
+                    + '<div class="gc_makecall" id="gc_makecall_' + interests[elem].id + '">'
+                    + '<a href="#" class="gc_makecall_interest" id="gc_makecall_interest_'+ interests[elem].id +'">Make Call</a>' + ' - '
+                    + '<input type="text" maxlength="50" value="" class="makecall_extension" id="makecall_extension_' + interests[elem].id + '" placeholder="Extension">'
+                    + '</div>'
 
-                + '</li>');
+                    + '</li></div>');
+            }
+            if (elem.indexOf('vmstsp') > -1 && interests[elem].default) {
+                createBlastWells(interests[elem]);
+            }
         }
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
+}
+
+function createBlastWells(interest) {
+    var interestId = interest.id;
+    $("#gc_blast").empty();
+
+    var blastText = '<div id="gc_blast_dests"><ul><li>Dest: <input type="text" maxlength="100" value="" class="blast_dest" id="blast_dest" placeholder="Destination..."></li></ul>'
+            + '<button id="add_blast_dest">+</button><button id="remove_blast_dest">-</button></div>'
+            + '<div id="gc_blast_keys"><ul><li>Key: <input type="text" maxlength="100" value="" class="blast_keys" id="blast_keys" placeholder="Msg ID (e.g. MK1234)"></li></ul>'
+            + '<button id="add_blast_key">+</button><button id="remove_blast_key">-</button></div>'
+            + '<br/><button class="vm_blast" id="vm_blast_' + interestId + '">Blast</button>';
+    $("#gc_blast").append(blastText);
 }
 
 $('#gc_profiles').on('click', 'a.gc_get_features', function(e) {
@@ -248,7 +281,7 @@ function getFeaturesClick(profileId, device) {
     var system = (device === 'vmstsp'? getVMSSystem() : getDefaultSystem());
     Session.connection.openlink.getFeatures(system, profileId, function(features) {
         // $('#gc_feature_list ul').empty();
-        var featureText = '<li>'
+        var featureText = '<div id="profile_' + profileId + '"><li>'
             + profileId;
 
         featureText += '<ul>';
@@ -261,12 +294,15 @@ function getFeaturesClick(profileId, device) {
         }
         featureText += '</ul>';
 
-        featureText += '</li>';
+        featureText += '</li></div>';
+        if ($("#profile_" + profileId).html()){
+            $("#profile_" + profileId).remove();
+        }
 
         $('#gc_feature_list ul:first').append(featureText);
 
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 }
 
@@ -276,9 +312,9 @@ $('#gc_interests').on('click', 'a.gc_subscribe_interest', function(e) {
         var interest = e.target.id.replace('gc_subscribe_interest_', '');
     }
     Session.connection.openlink.subscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
 
@@ -288,9 +324,9 @@ $('#gc_interests').on('click', 'a.gc_unsubscribe_interest', function(e) {
         var interest = e.target.id.replace('gc_unsubscribe_interest_', '');
     }
     Session.connection.openlink.unsubscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
 
@@ -299,14 +335,15 @@ $('#gc_interests').on('click', 'a.gc_makecall_interest', function(e) {
     if (e.target.id) {
         var interest = e.target.id.replace('gc_makecall_interest_', '');
     }
-    Session.connection.openlink.makeCall(getDefaultSystem(), interest, $('#makecall_extension').val(),
+    var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
+    Session.connection.openlink.makeCall(system, interest, $('#makecall_extension_' + interest).val(),
         [
-            { id: 'Conference', value1: true },
+            { id: 'Conference', value1: false },
             { id: 'CallBack', value1: true }
         ], function(call) {
-            alert('Call made with id: ' + call.id);
+            console.log("ALERT:",'Call made with id: ' + call.id);
         },function(message) {
-            alert(message);
+            console.log("ALERT:",message);
         });
 });
 
@@ -319,13 +356,14 @@ $('#gc_request_action').click(function() {
     if (call && call.interest) {
         var interest = call.interest;
     }
+    var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
 
-    Session.connection.openlink.requestAction(getDefaultSystem(), interest, callId, new Action({id: actionId, value1: value1, value2: value2}),function(call) {
+    Session.connection.openlink.requestAction(system, interest, callId, new Action({id: actionId, value1: value1, value2: value2}),function(call) {
         if (call) {
-            alert('Call actioned with id: ' + call.id);
+            console.log("ALERT:",'Call actioned with id: ' + call.id);
         }
     },function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
 
@@ -353,7 +391,7 @@ $('#gc_get_history').click(function() {
         }
 
     },function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
 
@@ -369,7 +407,7 @@ $('#gc_recording').on('click', 'a.gc_record', function(e) {
         console.log(recordFeatures);
         $('#recording_number').text('Record extension: ' + recordFeatures.exten);
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
 $('#gc_feature_list').on('click', 'a.gc_feature_playback', function(e) {
@@ -385,9 +423,53 @@ $('#gc_feature_list').on('click', 'a.gc_feature_playback', function(e) {
         console.log(playbackFeatures);
         $('#playback_number_' + feature).text('Playback extension: ' + playbackFeatures.exten);
     }, function(message) {
-        alert(message);
+        console.log("ALERT:",message);
     });
 });
+
+$('#gc_blast').on('click', '#add_blast_dest', function(e) {
+    e.preventDefault();
+    var blastDest = '<li>Dest: <input type="text" maxlength="100" class="blast_dest" id="blast_dest" placeholder="Destination..."></label></li>';
+    $('#gc_blast_dests ul:last').append(blastDest);
+
+});
+$('#gc_blast').on('click', '#remove_blast_dest', function(e) {
+    e.preventDefault();
+    $('#gc_blast_dests ul li:last-child').remove();
+
+});
+$('#gc_blast').on('click', '#add_blast_key', function(e) {
+    e.preventDefault();
+    var blastDest = '<li>Key: <input type="text" maxlength="100" class="blast_keys" id="blast_keys" placeholder="Msg ID (e.g. MK1234)"></label></li>';
+    $('#gc_blast_keys ul:last').append(blastDest);
+
+});
+$('#gc_blast').on('click', '#remove_blast_key', function(e) {
+    e.preventDefault();
+    $('#gc_blast_keys ul li:last-child').remove();
+
+});
+$('#gc_blast').on('click', '.vm_blast', function(e) {
+    e.preventDefault();
+    var dests = [];
+    $('input[id="blast_dest"]').each(function() {
+        dests.push($(this).val());
+    });
+    var keys = [];
+    $('input[id="blast_keys"]').each(function() {
+        keys.push($(this).val());
+    });
+    var interestId = e.target.id.replace('vm_blast_', '');
+    var profileId = interestId.split('_vmstsp')[0];
+    var offset = "0";
+    Session.connection.openlink.manageVoiceBlast(getVMSSystem(), profileId, interestId, keys, dests, offset, function(iq) {
+        console.log(iq);
+    }, function(message) {
+        console.log("ALERT:",message);
+    });
+});
+
+
 
 function getDefaultSystem() {
     return App.options.app.system + '.' + Session.connection.domain;

@@ -156,6 +156,7 @@ Strophe.addConnectionPlugin('openlink', {
             }
 
             var query = iq.getElementsByTagName('profile');
+
             for (var _i = 0, _len = query.length; _i < _len; _i++) {
                 var data = self._parseProfile(query[_i]);
                 var profile = new Profile(data);
@@ -644,6 +645,62 @@ Strophe.addConnectionPlugin('openlink', {
         };
 
         this._connection.sendIQ(mvm_iq, _successCallback, _errorCallback);
+    },
+
+    manageVoiceBlast: function(to, profile, interest, keys, dests, offset, successCallback, errorCallback) {
+        console.log("Voice Blast : " + keys.toString() + ", Destinations: " + dests.toString() + ", Offset: " + offset);
+
+        var mvb_iq = $iq({
+            to : to,
+            type : "set",
+            id : 'blastId'
+        }).c("command", {
+            xmlns : "http://jabber.org/protocol/commands",
+            action : "execute",
+            node : "http://xmpp.org/protocol/openlink:01:00:00#manage-voice-blast"
+        }).c("iodata", {
+            xmlns : "urn:xmpp:tmp:io-data",
+            type : "input"
+        });
+
+        var vb_id = "VB" + new Date().getTime();
+        mvb_iq.c("in").c("profile").t(profile);
+        mvb_iq.up().c("interest").t(interest);
+        mvb_iq.up().c("blastid").t(vb_id);
+        mvb_iq.up().c("action").t("Create");
+        mvb_iq.up().c("destinations");
+
+        // add destinations
+        for ( var i = 0; i < dests.length; i++) {
+            mvb_iq.c("destination").t(dests[i]).up();
+        }
+
+        mvb_iq.up().c("features");
+
+        // add message keys
+        for ( var i = 0; i < keys.length; i++) {
+            mvb_iq.c("feature").c("id").t(keys[i]).up().up();
+        }
+
+        mvb_iq.up().c("timestamp").t("" + offset);
+
+        var _successCallback = function(iq) {
+            if (errorCallback && self._isError(iq)) {
+                errorCallback(self._getErrorNote(iq));
+                return;
+            }
+            //var voiceMessage = self._parseVoiceMessage(iq);
+            if (successCallback) {
+                successCallback(iq);
+            }
+        }
+        var _errorCallback = function(iq) {
+            if (errorCallback) {
+                errorCallback('Error on request action');
+            }
+        };
+
+        this._connection.sendIQ(mvb_iq, _successCallback, _errorCallback);
     },
 
     _updateCalls: function(callEv) {

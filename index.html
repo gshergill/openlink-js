@@ -49,6 +49,7 @@
         </div>
         <div class="gc_btn_holder"><input type="button" id="gc_get_profiles" value="Get profiles"></div>
         <div class="gc_btn_holder"><input type="button" id="gc_get_profiles_vms" value="Get profiles VMS"></div>
+        <div class="gc_btn_holder"><input type="button" id="gc_get_profiles_gtx" value="Get profiles GTX"></div>
     </div>
 
     <h2>Features</h2>
@@ -75,6 +76,30 @@
         </ul>
     </div>
 
+    <h2>Voice Blast</h2>
+    <div id="gc_blast">
+<!--         <div id="gc_blast_dests">
+            <ul>
+                <li>
+                    Dest: <input type="text" maxlength="100" value="" class="blast_dest" id="blast_dest" placeholder="Destination...">
+                </li>
+            </ul>
+            <button id="add_blast_dest">+</button>
+            <button id="remove_blast_dest">-</button>
+        </div>
+        <div id="gc_blast_keys">
+            <ul>
+                <li>
+                    Key: <input type="text" maxlength="100" value="" class="blast_keys" id="blast_keys" placeholder="Msg ID (e.g. MK1234)">
+                </li>
+            </ul>
+            <button id="add_blast_key">+</button>
+            <button id="remove_blast_key">-</button>
+        </div>
+        <br/>
+        <button id="vm_blast">Blast</button> -->
+    </div>
+
     <h2>Call History</h2>
     <div id="gc_call_history">
         <div class="gc_btn_holder">
@@ -93,16 +118,16 @@
         <h4>Request Action</h4>
         <ul class="formfield_wrap">
             <li class="txtfield_wrap">
-                <input type="text" maxlength="50" value="" id="request_action_callid" placeholder="Call ID">
+                <input type="text" maxlength="200" value="" id="request_action_callid" placeholder="Call ID">
             </li>
             <li class="txtfield_wrap">
-                <input type="text" maxlength="50" value="" id="request_action_actionid" placeholder="Action ID">
+                <input type="text" maxlength="100" value="" id="request_action_actionid" placeholder="Action ID">
             </li>
             <li class="txtfield_wrap">
-                <input type="text" maxlength="50" value="" id="request_action_value1" placeholder="Value1">
+                <input type="text" maxlength="100" value="" id="request_action_value1" placeholder="Value1">
             </li>
             <li class="txtfield_wrap">
-                <input type="text" maxlength="50" value="" id="request_action_value2" placeholder="Value2">
+                <input type="text" maxlength="100" value="" id="request_action_value2" placeholder="Value2">
             </li>
         </ul>
         <div class="gc_btn_holder"><input type="button" id="gc_request_action" value="Request Action"></div>
@@ -126,11 +151,11 @@
     App.start({
         app: {
             debug: true,
-            xmpp_domain: 'centoscas',
+            xmpp_domain: 'loki.gltd.net',
             xmpp_resource: 'office',
-            username: 'user0',
-            password: 'user0',
-            system: 'cisco2',
+            username: 'gshergill',
+            password: 'Pidgeot100!',
+            system: 'avaya1',
             autologon: false
         }
     });
