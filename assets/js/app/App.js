@@ -239,8 +239,8 @@ function getInterestsClick(profileId, device) {
         // $('#gc_interest_list ul').empty();
         var vmstsp;
         for (var elem in interests) {
-            var interestId = interests[elem].id.split("@")[0];
-            if (!$("#interest_" + interestId).html()) {
+            var interestId = encodeURIComponent(interests[elem].id);
+            if (!$(document.getElementById(interestId)).html()) {
                 $('#gc_interest_list ul').append('<div id="interest_' + interestId + '"><li>'
                     + interests[elem].id + ' - '
                     + interests[elem].type + ' - '
@@ -324,9 +324,7 @@ $('#gc_interests').on('click', 'a.gc_subscribe_interest', function(e) {
     e.preventDefault();
     if (e.target.id) {
         var interest = e.target.id.replace('gc_subscribe_interest_', '');
-        if (App.options.app.system === "caslinkol" || App.options.app.system.indexOf("its") > -1) {
-            interest = interest + "@its1";
-        }
+        interest = decodeURIComponent(interest);
     }
     Session.connection.openlink.subscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
         console.log("ALERT:",message);
@@ -339,9 +337,7 @@ $('#gc_interests').on('click', 'a.gc_unsubscribe_interest', function(e) {
     e.preventDefault();
     if (e.target.id) {
         var interest = e.target.id.replace('gc_unsubscribe_interest_', '');
-        if (App.options.app.system === "caslinkol" || App.options.app.system.indexOf("its") > -1) {
-            interest = interest + "@its1";
-        }
+        interest = decodeURIComponent(interest);
     }
     Session.connection.openlink.unsubscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
         console.log("ALERT:",message);
@@ -353,14 +349,12 @@ $('#gc_interests').on('click', 'a.gc_unsubscribe_interest', function(e) {
 $('#gc_interests').on('click', 'a.gc_makecall_interest', function(e) {
     e.preventDefault();
     if (e.target.id) {
-        var interestOrig = e.target.id.replace('gc_makecall_interest_', '');
+        var interestCoded = e.target.id.replace('gc_makecall_interest_', '');
         var interest = e.target.id.replace('gc_makecall_interest_', '');
-        if (App.options.app.system === "caslinkol" || App.options.app.system.indexOf("its") > -1) {
-            interest = interest + "@its1";
-        }
+        interest = decodeURIComponent(interest);
     }
     var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
-    Session.connection.openlink.makeCall(system, interest, $('#makecall_extension_' + interestOrig).val(),
+    Session.connection.openlink.makeCall(system, interest, $(document.getElementById("makecall_extension_" + interestCoded)).val(),
         [
             // { id: 'Conference', value1: false },
             // { id: 'CallBack', value1: true }
@@ -377,7 +371,7 @@ $('#gc_interests').on('click', 'a.gc_makecall_interest_conf', function(e) {
         var interest = e.target.id.replace('gc_makecall_interest_conf_', '');
     }
     var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
-    Session.connection.openlink.makeCall(system, interest, $('#makecall_extension_' + interest).val(),
+    Session.connection.openlink.makeCall(system, interest, $(document.getElementById("makecall_extension_" + interest).val(),
         [
             { id: 'Conference', value1: true },
             { id: 'CallBack', value1: true }
