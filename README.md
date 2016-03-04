@@ -119,4 +119,4 @@ Store the returned callHandlerId in order to unregister the handler on disconnec
 
 ##License
 
-`This file is subject to the terms and conditions defined 3in file 'LICENSE', which is part of this source code package.`
+This file is subject to the terms and conditions defined in the file `LICENSE`, which is part of this source code package.
