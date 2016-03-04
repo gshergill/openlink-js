@@ -371,7 +371,7 @@ $('#gc_interests').on('click', 'a.gc_makecall_interest_conf', function(e) {
         var interest = e.target.id.replace('gc_makecall_interest_conf_', '');
     }
     var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
-    Session.connection.openlink.makeCall(system, interest, $(document.getElementById("makecall_extension_" + interest).val(),
+    Session.connection.openlink.makeCall(system, interest, $(document.getElementById("makecall_extension_" + interest)).val(),
         [
             { id: 'Conference', value1: true },
             { id: 'CallBack', value1: true }
@@ -503,8 +503,6 @@ $('#gc_blast').on('click', '.vm_blast', function(e) {
         console.log("ALERT:",message);
     });
 });
-
-
 
 function getDefaultSystem() {
     return App.options.app.system + '.' + Session.connection.domain;
