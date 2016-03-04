@@ -21,11 +21,19 @@ Strophe.addConnectionPlugin('openlink', {
         if (status == Strophe.Status.CONNECTED) {
             this.callHandlerId = this._connection.addHandler(function(packet) {
                 var callsElem = packet.getElementsByTagName('callstatus')[0];
+                var featureElem = packet.getElementsByTagName('devicestatus')[0];
                 if (callsElem) {
                     var queryCall = callsElem.getElementsByTagName('call');
                     for (var _i = 0, _len = queryCall.length; _i < _len; _i++) {
                         console.log(queryCall[_i]);
                         var data = self._parseCallInterest(queryCall[_i]);
+                        self._updateCalls(data);
+                    }
+                } else if (featureElem) {
+                    var queryFeature = featureElem.getElementsByTagName('feature');
+                    for (var _i = 0, _len = queryFeature.length; _i < _len; _i++) {
+                        console.log(queryFeature[_i]);
+                        var data = self._parsePlayback(queryFeature[_i]);
                         self._updateCalls(data);
                     }
                 }
@@ -138,7 +146,8 @@ Strophe.addConnectionPlugin('openlink', {
     getProfiles: function (to, successCallback, errorCallback) {
         var gp_iq = $iq({
             to : to,
-            type : "set"
+            type : "set",
+            from : Strophe.getBareJidFromJid(this._connection.jid) + "/office"
         }).c("command", {
             xmlns : "http://jabber.org/protocol/commands",
             action : "execute",
@@ -146,7 +155,7 @@ Strophe.addConnectionPlugin('openlink', {
         }).c("iodata", {
             xmlns : "urn:xmpp:tmp:io-data",
             type : "input"
-        }).c("in").c("jid").t(Strophe.getBareJidFromJid(this._connection.jid));
+        }).c("in").c("jid").t(Strophe.getBareJidFromJid(this._connection.jid) + "/office");
 
         var self = this;
         var _successCallback = function(iq) {
@@ -192,7 +201,8 @@ Strophe.addConnectionPlugin('openlink', {
 
         var gi_iq = $iq({
             to : to,
-            type : "set"
+            type : "set",
+            from : Strophe.getBareJidFromJid(this._connection.jid) + "/office"
         }).c("command", {
             xmlns : "http://jabber.org/protocol/commands",
             action : "execute",
@@ -277,7 +287,7 @@ Strophe.addConnectionPlugin('openlink', {
                 var feature = new Feature(data);
                 features[feature.id] = feature;
             }
-            console.log("FEATURES:", features);
+
             if (successCallback) {
                 successCallback(features);
             }
@@ -386,7 +396,7 @@ Strophe.addConnectionPlugin('openlink', {
      * @param successCallback called on successful execution.
      * @param errorCallback called on error.
      */
-    unsubscribe: function(to, interest, subscriptionId, successCallback, errorCallback) {
+    unsubscribe: function(to, interest, successCallback, errorCallback) {
         var self = this;
         this.getSubscriptions(to, interest, function(subscriptions) {
             if (subscriptions.length > 0) {
@@ -412,6 +422,10 @@ Strophe.addConnectionPlugin('openlink', {
                 if (errorCallback) {
                     errorCallback('No subscriptions exist');
                 }
+            }
+        }, function() {
+            if (errorCallback) {
+                errorCallback('No subscriptions exist');
             }
         });
     },
@@ -707,10 +721,12 @@ Strophe.addConnectionPlugin('openlink', {
         console.log("CALLS UPDATED");
         if (callEv) {
             var id = callEv.id;
-            if (id) {
-                this.calls[id] = callEv;
+            var msgid = callEv.msgid;
+            if (id || msgid) {
+                if (id) {
+                    this.calls[id] = callEv;
+                }
                 var changed = callEv.changed;
-
                 // notify call handlers here
                 for (var handler in this.callHandlers) {
                     this.callHandlers[handler](callEv, changed);
@@ -885,14 +901,32 @@ Strophe.addConnectionPlugin('openlink', {
             var deviceStatus = elem.getElementsByTagName('devicestatus')[0];
             if (deviceStatus) {
                 var deviceElem = deviceStatus.getElementsByTagName('feature')[0];
-                    if (deviceElem) {
-                        voiceMessage.feature = deviceElem.id;
-                        voiceMessage.status = this._getElementText('status', deviceElem);
-                        voiceMessage.action = this._getElementText('action', deviceElem);
-                        voiceMessage.exten = this._getElementText('exten', deviceElem);
-                        voiceMessage.label = this._getElementText('label', deviceElem);
-                    }
+                if (deviceElem) {
+                    voiceMessage.feature = deviceElem.id;
+                    voiceMessage.status = this._getElementText('status', deviceElem);
+                    voiceMessage.action = this._getElementText('action', deviceElem);
+                    voiceMessage.exten = this._getElementText('exten', deviceElem);
+                    voiceMessage.label = this._getElementText('label', deviceElem);
+                }
             }
+        }
+        return voiceMessage;
+    },
+
+    _parsePlayback: function(elem) {
+        var voiceMessage = {};
+        if (elem) {
+            var featureElem = elem;
+            voiceMessage.msgid = this._parseAttributes(featureElem).id;
+
+            voiceMessage.callid = this._getElementText('callid', featureElem);
+            voiceMessage.status = this._getElementText('status', featureElem);
+            voiceMessage.action = this._getElementText('action', featureElem);
+            voiceMessage.msglen = this._getElementText('msglen', featureElem);
+            voiceMessage.state = this._getElementText('state', featureElem);
+            voiceMessage.exten = this._getElementText('exten', featureElem);
+            voiceMessage.creationdate = this._getElementText('creationdate', featureElem);
+            voiceMessage.playprogress = this._getElementText('playprogress', featureElem);
         }
         return voiceMessage;
     },

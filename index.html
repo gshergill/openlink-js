@@ -78,26 +78,6 @@
 
     <h2>Voice Blast</h2>
     <div id="gc_blast">
-<!--         <div id="gc_blast_dests">
-            <ul>
-                <li>
-                    Dest: <input type="text" maxlength="100" value="" class="blast_dest" id="blast_dest" placeholder="Destination...">
-                </li>
-            </ul>
-            <button id="add_blast_dest">+</button>
-            <button id="remove_blast_dest">-</button>
-        </div>
-        <div id="gc_blast_keys">
-            <ul>
-                <li>
-                    Key: <input type="text" maxlength="100" value="" class="blast_keys" id="blast_keys" placeholder="Msg ID (e.g. MK1234)">
-                </li>
-            </ul>
-            <button id="add_blast_key">+</button>
-            <button id="remove_blast_key">-</button>
-        </div>
-        <br/>
-        <button id="vm_blast">Blast</button> -->
     </div>
 
     <h2>Call History</h2>
@@ -144,8 +124,13 @@
 </div><!-- /.container -->
 
 <!-- Application -->
-<script src="build/application.js"></script>
+<!-- <script src="build/application.js"></script> -->
 
+<script src="assets/js/vendor/strophe.js"></script>
+<script src="assets/js/vendor/strophe.openlink.js"></script>
+<script src="assets/js/vendor/strophe.gtx.js"></script>
+<script src="assets/js/vendor/jquery.js"></script>
+<script src="assets/js/app/App.js"></script>
 
 <script type="text/javascript">
     App.start({
@@ -153,12 +138,13 @@
             debug: true,
             xmpp_domain: 'loki.gltd.net',
             xmpp_resource: 'office',
-            username: 'gshergill',
-            password: 'Pidgeot100!',
-            system: 'avaya1',
+            username: 'testuser2',
+            password: 'Pa55w0rd',
+            system: 'caslinkol',
             autologon: false
         }
     });
+    
 </script>
 <!-- /Application -->
 

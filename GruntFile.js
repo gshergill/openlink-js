@@ -13,7 +13,7 @@ grunt.initConfig({
 	  },
 	  javascript: {
 	    cwd: 'assets',
-	    src: [ '**/*.js' ],
+	    src: [ '**/*.js', '!js/vendor/strophe-5e3d593.js'],
 	    dest: 'build',
 	    expand: true
 	  },

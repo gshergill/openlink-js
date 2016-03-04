@@ -41,37 +41,39 @@ App.connected = function(connection) {
 
     Session.connection.openlink.sendPresence();
 
-    Session.callHandlerId = Session.connection.openlink.addCallHandler(App.callHandler)
+    Session.callHandlerId = Session.connection.openlink.addCallHandler(App.callHandler);
 }
 
 App.callHandler = function(callEv, changed) {
     // do something
     console.log("CALL HANDLER: " + changed + " callEv: " + JSON.stringify(callEv));
 
-    $('#gc_call_list ul').empty();
-    var calls = Session.connection.openlink.calls;
-    for (var cid in Session.connection.openlink.calls) {
-        var call = calls[cid];
+    if (callEv.id) {
+        $('#gc_call_list ul').empty();
+        var calls = Session.connection.openlink.calls;
+        for (var cid in Session.connection.openlink.calls) {
+            var call = calls[cid];
 
             var callText = '<li>' + call.id + ' - '
-            + call.profile + ' - '
-            + call.interest + ' - '
-            + call.state + ' - '
-            + call.direction;
-            if (call.actions.length > 0) {
-                callText += '<ul>';
-                for (var _i = 0; _i < call.actions.length; _i++) {
-                    callText += '<li>Action: ' + call.actions[_i] + '</li>';
-                    console.log("CALL TO ARMS!",call.actions[_i]);
+                + call.profile + ' - '
+                + call.interest + ' - '
+                + call.state + ' - '
+                + call.direction;
+                if (call.actions.length > 0) {
+                    callText += '<ul>';
+                    for (var _i = 0; _i < call.actions.length; _i++) {
+                        callText += '<li>Action: ' + call.actions[_i] + '</li>';
+                        console.log("CALL TO ARMS!",call.actions[_i]);
+                    }
+                    callText += '</ul>';
+                } else {
+                    callText += '<ul><li>No actions available</li></ul>';
                 }
-                callText += '</ul>';
-            } else {
-                callText += '<ul><li>No actions available</li></ul>';
-            }
 
             callText += '</li>';
 
-        $('#gc_call_list ul:first').append(callText);
+            $('#gc_call_list ul:first').append(callText);
+        }
     }
 
 }
@@ -104,7 +106,17 @@ $('#gc_signin').click(function() {
     var password = $('#password').val();
 
     if (username && password) {
-        Session.connection = new Strophe.Connection(BOSH_URL);
+        Session.connection = new Strophe.Connection(BOSH_URL
+            // ,{
+            //     "cookies": {
+            //         "testCookie-1234": {
+            //             "value": "1234",
+            //             "domain": "localhost"
+            //         }
+            //     },
+            //     "withCredentials": true
+            // }
+        );
         connect({
             username: username,
             password: password,
@@ -159,7 +171,6 @@ $('#gc_get_profiles_vms').click(function() {
         $('#gc_profile_list ul').empty();
         for (var profileId in profiles) {
             var profile = profiles[profileId];
-            console.log(profile);
 
             var profileText = '<li>'
                 + profile.id + ' - '
@@ -228,17 +239,20 @@ function getInterestsClick(profileId, device) {
         // $('#gc_interest_list ul').empty();
         var vmstsp;
         for (var elem in interests) {
-            if (!$("#interest_" + interests[elem].id).html()) {
-                $('#gc_interest_list ul').append('<div id="interest_' + interests[elem].id + '"><li>'
+            var interestId = interests[elem].id.split("@")[0];
+            if (!$("#interest_" + interestId).html()) {
+                $('#gc_interest_list ul').append('<div id="interest_' + interestId + '"><li>'
                     + interests[elem].id + ' - '
                     + interests[elem].type + ' - '
                     + interests[elem].label + ' - '
-                    + '<a href="#" class="gc_subscribe_interest" id="gc_subscribe_interest_'+ interests[elem].id +'">Subscribe</a>' + ' - '
-                    + '<a href="#" class="gc_unsubscribe_interest" id="gc_unsubscribe_interest_'+ interests[elem].id +'">Unsubscribe</a>'
+                    + '<a href="#" class="gc_subscribe_interest" id="gc_subscribe_interest_'+ interestId +'">Subscribe</a>' + ' - '
+                    + '<a href="#" class="gc_unsubscribe_interest" id="gc_unsubscribe_interest_'+ interestId +'">Unsubscribe</a>'
 
-                    + '<div class="gc_makecall" id="gc_makecall_' + interests[elem].id + '">'
-                    + '<a href="#" class="gc_makecall_interest" id="gc_makecall_interest_'+ interests[elem].id +'">Make Call</a>' + ' - '
-                    + '<input type="text" maxlength="50" value="" class="makecall_extension" id="makecall_extension_' + interests[elem].id + '" placeholder="Extension">'
+                    + '<div class="gc_makecall" id="gc_makecall_' + interestId + '">'
+                    + '<a href="#" class="gc_makecall_interest" id="gc_makecall_interest_'+ interestId +'">Make Call</a>' 
+                    + ' ' + '<a href="#" class="gc_makecall_interest_conf" id="gc_makecall_interest_conf_'+ interestId +'">(conf)</a>'
+                    + ' - '
+                    + '<input type="text" maxlength="50" value="" class="makecall_extension" id="makecall_extension_' + interestId + '" placeholder="Extension">'
                     + '</div>'
 
                     + '</li></div>');
@@ -310,6 +324,9 @@ $('#gc_interests').on('click', 'a.gc_subscribe_interest', function(e) {
     e.preventDefault();
     if (e.target.id) {
         var interest = e.target.id.replace('gc_subscribe_interest_', '');
+        if (App.options.app.system === "caslinkol" || App.options.app.system.indexOf("its") > -1) {
+            interest = interest + "@its1";
+        }
     }
     Session.connection.openlink.subscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
         console.log("ALERT:",message);
@@ -322,23 +339,47 @@ $('#gc_interests').on('click', 'a.gc_unsubscribe_interest', function(e) {
     e.preventDefault();
     if (e.target.id) {
         var interest = e.target.id.replace('gc_unsubscribe_interest_', '');
+        if (App.options.app.system === "caslinkol" || App.options.app.system.indexOf("its") > -1) {
+            interest = interest + "@its1";
+        }
     }
     Session.connection.openlink.unsubscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
         console.log("ALERT:",message);
     }, function(message) {
-        console.log("ALERT:",message);
+        console.log("ERROR ALERT:",message);
     });
 });
 
 $('#gc_interests').on('click', 'a.gc_makecall_interest', function(e) {
     e.preventDefault();
     if (e.target.id) {
+        var interestOrig = e.target.id.replace('gc_makecall_interest_', '');
         var interest = e.target.id.replace('gc_makecall_interest_', '');
+        if (App.options.app.system === "caslinkol" || App.options.app.system.indexOf("its") > -1) {
+            interest = interest + "@its1";
+        }
+    }
+    var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
+    Session.connection.openlink.makeCall(system, interest, $('#makecall_extension_' + interestOrig).val(),
+        [
+            // { id: 'Conference', value1: false },
+            // { id: 'CallBack', value1: true }
+        ], function(call) {
+            console.log("ALERT:",'Call made with id: ' + call.id);
+        },function(message) {
+            console.log("ALERT:",message);
+        });
+});
+
+$('#gc_interests').on('click', 'a.gc_makecall_interest_conf', function(e) {
+    e.preventDefault();
+    if (e.target.id) {
+        var interest = e.target.id.replace('gc_makecall_interest_conf_', '');
     }
     var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
     Session.connection.openlink.makeCall(system, interest, $('#makecall_extension_' + interest).val(),
         [
-            { id: 'Conference', value1: false },
+            { id: 'Conference', value1: true },
             { id: 'CallBack', value1: true }
         ], function(call) {
             console.log("ALERT:",'Call made with id: ' + call.id);
@@ -371,7 +412,7 @@ $('#gc_get_history').click(function() {
     $('#gc_history_list ul').empty();
     $('#gc_history_list ul').append('<li>Loading history</li>');
     Session.connection.openlink.getCallHistory(getDefaultSystem(), "", 
-        "", "", "out", "", "", "0", "50", function(history) {
+        "", "", "", "incoming", "", "", "", "5", function(history) {
         $('#gc_history_list ul').empty();
         if (history) {
             console.log(history);
