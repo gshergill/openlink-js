@@ -1,6 +1,6 @@
 BIND_PATH = '/http-bind';
 BOSH_URL = window.location.protocol + '//' + window.location.hostname + BIND_PATH;
-//BOSH_URL = 'http://loki.gltd.net:7070/http-bind/';
+//BOSH_URL = 'https://loki.gltd.net:7443/http-bind/';
 App = {};
 Session = {};
 
@@ -26,24 +26,31 @@ App.signInClick = function() {
 
     var username = document.getElementById('username').value;
     var password = document.getElementById('password').value;
+    var domain = document.getElementById('xmpp_domain').value;
+    var resource = document.getElementById('resource').value;
+
+    // if (App.options.app.cookies) {
+    //     var xhttp;
+    //     xhttp = new XMLHttpRequest();
+    //     xhttp.withCredentials = true;
+    //     xhttp.open("POST", "https://" + window.location.hostname + "/cookies", true);
+    //     xhttp.onload = function () {
+    //         console.log(xhttp.responseText);
+    //     };
+    //     xhttp.send('TestCookie=7H151547357C00K13');
+    // }
 
     if (username && password) {
         Session.connection = new Strophe.Connection(BOSH_URL
             ,{
-                "cookies": {
-                    "testCookie-1234": {
-                        "value": "1234",
-                        "path": "/"
-                    }
-                },
-                "withCredentials": true
+                "keepalive": true
             }
         );
         connect({
             username: username,
             password: password,
-            resource: App.options.app.xmpp_resource,
-            domain: App.options.app.xmpp_domain
+            resource: resource,
+            domain: domain
         });
     }
 };
@@ -56,6 +63,15 @@ App.start = function(options) {
     }
     if (App.options.app.password) {
         document.getElementById('password').value = App.options.app.password;
+    }
+    if (App.options.app.xmpp_domain) {
+        document.getElementById('xmpp_domain').value = App.options.app.xmpp_domain;
+    }
+    if (App.options.app.system) {
+        document.getElementById('system').value = App.options.app.system;
+    }
+    if (App.options.app.xmpp_resource) {
+        document.getElementById('resource').value = App.options.app.xmpp_resource;
     }
     if (App.options.app.autologon) {
         App.signInClick();
@@ -77,13 +93,13 @@ App.connected = function(connection) {
     document.getElementById('gc_login_window').style.display = "none";
     document.getElementById('gc_logout_window').style.display = "block";
 
-    // var xhttp;
-    // xhttp = new XMLHttpRequest();
-    // xhttp.open("POST", "http://localhost/cookies", true);
-    // xhttp.onload = function () {
-    //     console.log(xhttp.responseText);
-    // };
-    // xhttp.send("test");
+    var privateData = Session.connection.openlink.getPrivateData(function(response) {
+        console.log(response);
+    })
+
+    Session.connection.openlink.discoItems(App.options.app.xmpp_domain, function(response) {
+        console.log(response);
+    });
 
     Session.connection.openlink.profiles = {};
 
@@ -165,10 +181,14 @@ App.getProfilesClick = function() {
     liElement.appendChild(liText);
     ulElement.appendChild(liElement);
     document.getElementById('gc_profile_list').appendChild(ulElement);
-    Session.connection.openlink.getProfiles(getDefaultSystem(), function(profiles) {
+
+    var resource = document.getElementById('resource').value;
+
+    Session.connection.openlink.getProfiles(getDefaultSystem(), resource, "true", "1234", "123456", function(profiles) {
         document.getElementById('gc_profile_list').innerHTML = "";
         for (var profileId in profiles) {
             var profile = profiles[profileId];
+            console.log(profiles);
 
             var profileUl = document.createElement('ul');
             var profileLi = document.createElement('li');
@@ -237,7 +257,9 @@ App.getProfilesVmsClick = function() {
     liElement.appendChild(liText);
     ulElement.appendChild(liElement);
 
-    Session.connection.openlink.getProfiles(getVMSSystem(), function(profiles) {        
+    var resource = document.getElementById('resource').value;
+
+    Session.connection.openlink.getProfiles(getVMSSystem(), resource,function(profiles) {        
         for (var profileId in profiles) {
             var profile = profiles[profileId];
 
@@ -334,6 +356,34 @@ App.getProfilesGtxClick = function() {
     document.getElementById('gc_feature_list').innerHTML = "";
     Session.connection.gtx.getProfiles(getDefaultSystem(), function(profiles) {
         console.log(profiles);
+        var gtxSystem = document.getElementById('system').value;
+
+        var makeCallUl = document.createElement('ul');
+        var makeCallDiv = document.createElement('div');
+        makeCallDiv.className = "gc_makecall";
+        makeCallDiv.id = "gc_makecall_gtx";
+        var makeCallBtn = document.createElement('a');
+        makeCallBtn.href = "#";
+        makeCallBtn.className = "gc_makecall_interest";
+        makeCallBtn.id = "gc_makecall_interest_gtx";
+        makeCallBtn.innerHTML = "Make Call";
+        var makeCallDest = document.createElement('input');
+        makeCallDest.type = "text";
+        makeCallDest.maxlength = "50";
+        makeCallDest.value = "";
+        makeCallDest.className = "makecall_extension";
+        makeCallDest.id = "makecall_extension_gtx";
+        makeCallDest.placeholder = "Extension";
+
+        makeCallDiv.appendChild(makeCallBtn);
+        makeCallDiv.appendChild(makeCallDest);
+        makeCallUl.appendChild(makeCallDiv);
+
+        document.getElementById('gc_interest_list').appendChild(makeCallUl);
+
+        var getMakeCallBtn = document.getElementById('gc_makecall_interest_gtx');
+        getMakeCallBtn.addEventListener('click', App.makeCallGtx);
+
     }, function(message) {
         console.log("ALERT:",message);
     });
@@ -358,7 +408,7 @@ App.getInterests = function(e) {
 };
 
 function getInterestsClick(profileId, device) {
-    var system = (device === 'vmstsp'? getVMSSystem() : getDefaultSystem());
+    var system = getDefaultSystem();
     Session.connection.openlink.getInterests(system, profileId, function(interests) {
         var vmstsp;
         document.getElementById('gc_interest_list').innerHTML = "";
@@ -385,6 +435,14 @@ function getInterestsClick(profileId, device) {
                 unsubscribeBtn.id = "gc_unsubscribe_interest_" + interestId;
                 unsubscribeBtn.href = "#";
                 unsubscribeBtn.innerHTML = "Unsubscribe";
+
+                var getInterestSpan = document.createElement('span');
+                getInterestSpan.innerHTML = " - ";
+                var getInterestBtn = document.createElement('a');
+                getInterestBtn.className = "gc_get_interest";
+                getInterestBtn.id = "gc_get_interest_" + interestId;
+                getInterestBtn.href = "#";
+                getInterestBtn.innerHTML = "Get Interest";
 
                 var makeCallDiv = document.createElement('div');
                 makeCallDiv.className = "gc_makecall";
@@ -418,6 +476,8 @@ function getInterestsClick(profileId, device) {
                 interestLi.appendChild(subscribeBtn);
                 interestLi.appendChild(subscribeUnsuscribeSpan);
                 interestLi.appendChild(unsubscribeBtn);
+                interestLi.appendChild(getInterestSpan);
+                interestLi.appendChild(getInterestBtn);
                 interestLi.appendChild(makeCallDiv);
                 interestDiv.appendChild(interestLi);
                 interestUl.appendChild(interestDiv);
@@ -428,6 +488,9 @@ function getInterestsClick(profileId, device) {
 
                 var getUnsubscribeBtn = document.getElementById('gc_unsubscribe_interest_' + interestId);
                 getUnsubscribeBtn.addEventListener('click', App.unsubscribe);
+
+                var getInterestBtn = document.getElementById('gc_get_interest_' + interestId);
+                getInterestBtn.addEventListener('click', App.getInterest);
 
                 var getMakeCallBtn = document.getElementById('gc_makecall_interest_' + interestId);
                 getMakeCallBtn.addEventListener('click', App.makeCall);
@@ -440,6 +503,27 @@ function getInterestsClick(profileId, device) {
                 createBlastWells(interests[elem]);
             }
         }
+    }, function(message) {
+        console.log("ALERT:",message);
+    });
+}
+
+App.getInterest = function(e) {
+    e.preventDefault();
+    if (e.target.id) {
+        var interestId = e.target.id.replace('gc_get_interest_', '');
+        interestId = decodeURIComponent(interestId);
+    }
+    if (e.target.dataset.device) {
+        var device = e.target.dataset.device;
+    }
+    getInterestClick(interestId, device);
+};
+
+function getInterestClick(interestId, device) {
+    var system = (device === 'vmstsp'? getVMSSystem() : getDefaultSystem());
+    Session.connection.openlink.getInterest(system, interestId, function(interest) {
+        console.log(interest);
     }, function(message) {
         console.log("ALERT:",message);
     });
@@ -603,8 +687,28 @@ App.subscribe = function(e) {
         var interest = e.target.id.replace('gc_subscribe_interest_', '');
         interest = decodeURIComponent(interest);
     }
-    Session.connection.openlink.subscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
-        console.log("ALERT:",message);
+
+    Session.connection.openlink.getSubscriptions(Session.connection.openlink.getPubsubAddress(), interest, function(subscriptions) {
+        if (subscriptions.length > 0) {
+            for (var _i = 0, _len = subscriptions.length; _i < _len; _i++) {
+                console.log(subscriptions[_i]);
+                if (subscriptions[_i].subscription === "subscribed") {
+                    console.log('Already subscribed');
+                } else {
+                    Session.connection.openlink.subscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
+                        console.log("ALERT:",message);
+                    }, function(message) {
+                        console.log("ALERT:",message);
+                    });
+                }
+            }
+        } else {
+            Session.connection.openlink.subscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
+                console.log("ALERT:",message);
+            }, function(message) {
+                console.log("ALERT:",message);
+            });
+        } 
     }, function(message) {
         console.log("ALERT:",message);
     });
@@ -616,10 +720,24 @@ App.unsubscribe = function(e) {
         var interest = e.target.id.replace('gc_unsubscribe_interest_', '');
         interest = decodeURIComponent(interest);
     }
-    Session.connection.openlink.unsubscribe(Session.connection.openlink.getPubsubAddress(), interest, function(message) {
-        console.log("ALERT:",message);
+
+    Session.connection.openlink.getSubscriptions(Session.connection.openlink.getPubsubAddress(), interest, function(subscriptions) {
+        if (subscriptions.length > 0) {
+            for (var _i = 0, _len = subscriptions.length; _i < _len; _i++) {
+                console.log(subscriptions[_i]);
+                var subid = subscriptions[_i].subid;
+                console.log(subid);
+                Session.connection.openlink.unsubscribe(Session.connection.openlink.getPubsubAddress(), interest, subid, function(message) {
+                    console.log("ALERT:",message);
+                }, function(message) {
+                    console.log("ERROR ALERT:",message);
+                });
+            }
+        } else {
+            console.log('No subscriptions exist');
+        } 
     }, function(message) {
-        console.log("ERROR ALERT:",message);
+        console.log("ALERT:",message);
     });
 };
 
@@ -630,13 +748,26 @@ App.makeCall = function(e) {
         var interest = e.target.id.replace('gc_makecall_interest_', '');
         interest = decodeURIComponent(interest);
     }
-    var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
+    //var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
+    var system = getDefaultSystem();
     var dest = document.getElementById("makecall_extension_" + interestCoded).value;
     Session.connection.openlink.makeCall(system, interest, dest,
         [
-            // { id: 'Conference', value1: false },
-            // { id: 'CallBack', value1: true }
+        //    { id: 'Conference', value1: false },
+        //    { id: 'CallBack', value1: true }
         ], function(call) {
+            console.log("ALERT:",'Call made with id: ' + call.id);
+        },function(message) {
+            console.log("ALERT:",message);
+        });
+};
+
+App.makeCallGtx = function(e) {
+    e.preventDefault();
+    var to = App.options.app.xmpp_domain;
+    var system = document.getElementById('system').value;
+    var dest = document.getElementById("makecall_extension_gtx").value;
+    Session.connection.gtx.makeCallGtx(to, system, dest, function(call) {
             console.log("ALERT:",'Call made with id: ' + call.id);
         },function(message) {
             console.log("ALERT:",message);
@@ -646,6 +777,7 @@ App.makeCall = function(e) {
 App.makeCallConf = function(e) {
     e.preventDefault();
     if (e.target.id) {
+        var interestCoded = e.target.id.replace('gc_makecall_interest_conf_', '');
         var interest = e.target.id.replace('gc_makecall_interest_conf_', '');
     }
     var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
@@ -670,7 +802,7 @@ App.requestAction = function() {
     if (call && call.interest) {
         var interest = call.interest;
     }
-    var system = (interest.indexOf('vmstsp') > -1? getVMSSystem() : getDefaultSystem());
+    var system = getDefaultSystem();
 
     Session.connection.openlink.requestAction(system, interest, callId, new Action({id: actionId, value1: value1, value2: value2}),function(call) {
         if (call) {
@@ -849,7 +981,7 @@ App.blast = function(e) {
 };
 
 function getDefaultSystem() {
-    return App.options.app.system + '.' + Session.connection.domain;
+    return document.getElementById('system').value + '.' + Session.connection.domain;
 }
 
 function getVMSSystem() {
@@ -901,5 +1033,3 @@ function connect(data) {
     console.log("Connect: jid: " + jid);
     Session.connection.connect(jid, data.password, connectionCallback);
 }
-
-

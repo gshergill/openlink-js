@@ -24,9 +24,18 @@
 
     </div>
 
+    Telephony System
+    <input type="text" maxlength="50" value="" id="system" placeholder="System">
+    <br/>
+    Resource
+    <input type="text" maxlength="50" value="" id="resource" placeholder="Resource">
+
     <h2>Login/Logout</h2>
     <div id="gc_login_window">
         <ul class="formfield_wrap">
+            <li class="txtfield_wrap">
+                <input type="text" maxlength="50" value="" id="xmpp_domain" placeholder="XMPP Domain">
+            </li>
             <li class="txtfield_wrap">
                 <input type="text" maxlength="50" value="" id="username" placeholder="Username">
             </li>
@@ -136,15 +145,15 @@
     App.start({
         app: {
             debug: true,
-            xmpp_domain: 'centoscas',
-            xmpp_resource: 'office',
-            username: 'user10',
-            password: 'user10',
-            system: 'avaya1',
-            autologon: false
+            xmpp_domain: 'cluster.gltd.local', // This is the Openfire server XMPP domain name
+            xmpp_resource: 'office', // This should be left as office
+            username: 'brian.broker', // This is the username for the system
+            password: 'Pa55w0rd', // This is the password for the above user
+            system: 'caslinkol', // This could be avaya1, caslinkol, etrali1, etc.
+            autologon: false,
+            cookies: false // Set to true if you need to send cookies for a token
         }
     });
-    
 </script>
 <!-- /Application -->
 

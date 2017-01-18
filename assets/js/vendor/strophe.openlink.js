@@ -143,11 +143,11 @@ Strophe.addConnectionPlugin('openlink', {
      * @param successCallback called on successful execution with array of profile IDs and profiles.
      * @param errorCallback called on error.
      */
-    getProfiles: function (to, successCallback, errorCallback) {
+    getProfiles: function (to, resource, login, deviceNum, directoryNumber, successCallback, errorCallback) {
         var gp_iq = $iq({
             to : to,
             type : "set",
-            from : Strophe.getBareJidFromJid(this._connection.jid) + "/office"
+            from : Strophe.getBareJidFromJid(this._connection.jid) + "/" + resource
         }).c("command", {
             xmlns : "http://jabber.org/protocol/commands",
             action : "execute",
@@ -155,13 +155,18 @@ Strophe.addConnectionPlugin('openlink', {
         }).c("iodata", {
             xmlns : "urn:xmpp:tmp:io-data",
             type : "input"
-        }).c("in").c("jid").t(Strophe.getBareJidFromJid(this._connection.jid) + "/office");
+        }).c("in").c("jid").t(Strophe.getBareJidFromJid(this._connection.jid) + "/" + resource).up()
+        .c("mobility", {
+            login : login,
+            devicenum : deviceNum,
+            directorynumber : directoryNumber
+        });
 
         var self = this;
         var _successCallback = function(iq) {
             if (errorCallback && self._isError(iq)) {
                 errorCallback(self._getErrorNote(iq));
-                return;
+                //return;
             }
 
             var query = iq.getElementsByTagName('profile');
@@ -172,6 +177,7 @@ Strophe.addConnectionPlugin('openlink', {
                 for (var _j = 0, _len1 = data.actions.length; _j < _len1; _j++) {
                     profile._addAction(data.actions[_j]);
                 }
+                console.log(profile);
 
                 self.profiles[profile.id] = profile;
             }
@@ -190,7 +196,7 @@ Strophe.addConnectionPlugin('openlink', {
     },
 
     /**
-     * Implements 'http://xmpp.org/protocol/openlink:01:00:00#get-interest'.
+     * Implements 'http://xmpp.org/protocol/openlink:01:00:00#get-interests'.
      * @param to Openlink XMPP component.
      * @param profileId profile ID.
      * @param successCallback called on successful execution.
@@ -201,8 +207,7 @@ Strophe.addConnectionPlugin('openlink', {
 
         var gi_iq = $iq({
             to : to,
-            type : "set",
-            from : Strophe.getBareJidFromJid(this._connection.jid) + "/office"
+            type : "set"
         }).c("command", {
             xmlns : "http://jabber.org/protocol/commands",
             action : "execute",
@@ -218,6 +223,69 @@ Strophe.addConnectionPlugin('openlink', {
                 errorCallback(self._getErrorNote(iq));
                 return;
             }
+
+            var interestsElem = iq.getElementsByTagName('interests')[0];
+            var callsElem = iq.getElementsByTagName('callstatus')[0];
+            if (interests) {
+                var query = interestsElem.getElementsByTagName('interest');
+                for (var _i = 0, _len = query.length; _i < _len; _i++) {
+                    var data = self._parseAttributes(query[_i]);
+                    if (data.id) {
+                        var interest = new Interest(data);
+                        interests[interest.id] = interest;
+                    }
+                }
+                if (callsElem) {
+                    var queryCall = callsElem.getElementsByTagName('call');
+                    for (var _i = 0, _len = queryCall.length; _i < _len; _i++) {
+                        console.log(queryCall[_i]);
+                        var data = self._parseCallInterest(queryCall[_i]);
+                        self._updateCalls(data);
+                    }
+                }
+                if (successCallback) {
+                    successCallback(interests);
+                }
+            }
+        };
+
+        var _errorCallback = function(iq) {
+            if (errorCallback) {
+                errorCallback('Error getting interests')
+            }
+        };
+
+        this._connection.sendIQ(gi_iq, _successCallback, _errorCallback);
+    },
+
+    /**
+     * Implements 'http://xmpp.org/protocol/openlink:01:00:00#get-interest'.
+     * @param to Openlink XMPP component.
+     * @param profileId profile ID.
+     * @param successCallback called on successful execution.
+     * @param errorCallback called on error.
+     */
+    getInterest: function(to, interestId, successCallback, errorCallback) {
+        var interests = {};
+
+        var gi_iq = $iq({
+            to : to,
+            type : "set"
+        }).c("command", {
+            xmlns : "http://jabber.org/protocol/commands",
+            action : "execute",
+            node : "http://xmpp.org/protocol/openlink:01:00:00#get-interest"
+        }).c("iodata", {
+            xmlns : "urn:xmpp:tmp:io-data",
+            type : "input"
+        }).c("in").c("interest").t(interestId);
+
+        var self = this;
+        var _successCallback = function(iq) {
+            // if (errorCallback && self._isError(iq)) {
+            //     errorCallback(self._getErrorNote(iq));
+            //     return;
+            // }
 
             var interestsElem = iq.getElementsByTagName('interests')[0];
             var callsElem = iq.getElementsByTagName('callstatus')[0];
@@ -367,26 +435,34 @@ Strophe.addConnectionPlugin('openlink', {
      */
     subscribe: function(to, interest, successCallback, errorCallback) {
         var self = this;
-        this.getSubscriptions(to, interest, function(subscriptions) {
-            if (subscriptions.length > 0) {
-                errorCallback('Already subscribed with ' + subscriptions.length + ' subscriptions');
-            } else {
-                var subs_iq2 = $iq({
-                    to: to,
-                    type: "set"
-                }).c('pubsub', {
-                    xmlns: "http://jabber.org/protocol/pubsub"
-                }).c('subscribe', {
-                    node: interest,
-                    jid: Strophe.getBareJidFromJid(self._connection.jid)
-                });
-                self._connection.sendIQ(subs_iq2, function(iq) {
-                    if (successCallback) {
-                        successCallback('Subscribed');
-                    }
-                });
-            }
+        var subs_iq2 = $iq({
+            to: to,
+            type: "set"
+        }).c('pubsub', {
+            xmlns: "http://jabber.org/protocol/pubsub"
+        }).c('subscribe', {
+            node: interest,
+            jid: Strophe.getBareJidFromJid(self._connection.jid)
         });
+        
+        var _successCallback = function(iq) {
+            if (errorCallback && self._isError(iq)) {
+                errorCallback(self._getErrorNote(iq));
+                return;
+            }
+
+            if (successCallback) {
+                successCallback(iq);
+            }
+        };
+
+        var _errorCallback = function(iq) {
+            if (errorCallback) {
+                errorCallback('No subscriptions exist');
+            }
+        };
+
+        self._connection.sendIQ(subs_iq2, _successCallback, _errorCallback);
     },
 
     /**
@@ -396,38 +472,37 @@ Strophe.addConnectionPlugin('openlink', {
      * @param successCallback called on successful execution.
      * @param errorCallback called on error.
      */
-    unsubscribe: function(to, interest, successCallback, errorCallback) {
+    unsubscribe: function(to, interest, subid, successCallback, errorCallback) {
         var self = this;
-        this.getSubscriptions(to, interest, function(subscriptions) {
-            if (subscriptions.length > 0) {
-                for (var _i = 0, _len = subscriptions.length; _i < _len; _i++) {
-                    var subs_iq = $iq({
-                        to: to,
-                        type: "set"
-                    }).c('pubsub', {
-                        xmlns: "http://jabber.org/protocol/pubsub"
-                    }).c('unsubscribe', {
-                        node: interest,
-                        jid: Strophe.getBareJidFromJid(self._connection.jid),
-                        subid: subscriptions[_i].subid
-                    });
-
-                    self._connection.sendIQ(subs_iq, function (iq) {
-                        if (successCallback) {
-                            successCallback('Unsubscribed');
-                        }
-                    });
-                }
-            } else {
-                if (errorCallback) {
-                    errorCallback('No subscriptions exist');
-                }
+        var subs_iq = $iq({
+            to: to,
+            type: "set"
+        }).c('pubsub', {
+            xmlns: "http://jabber.org/protocol/pubsub"
+        }).c('unsubscribe', {
+            node: interest,
+            jid: Strophe.getBareJidFromJid(self._connection.jid),
+            subid: subid
+        });
+        
+        var _successCallback = function(iq) {
+            if (errorCallback && self._isError(iq)) {
+                errorCallback(self._getErrorNote(iq));
+                return;
             }
-        }, function() {
+
+            if (successCallback) {
+                successCallback('Unsubscribed');
+            }
+        };
+
+        var _errorCallback = function(iq) {
             if (errorCallback) {
                 errorCallback('No subscriptions exist');
             }
-        });
+        };
+
+        self._connection.sendIQ(subs_iq, _successCallback, _errorCallback);
     },
 
     /**
