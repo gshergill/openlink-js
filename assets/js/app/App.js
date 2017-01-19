@@ -183,8 +183,11 @@ App.getProfilesClick = function() {
     document.getElementById('gc_profile_list').appendChild(ulElement);
 
     var resource = document.getElementById('resource').value;
+    var mobilityLogin = document.getElementById('mobility_login').value;
+    var mobilityDeviceNum = document.getElementById('mobility_devicenum').value;
+    var mobilityDirectoryNumber = document.getElementById('mobility_directorynumber').value;
 
-    Session.connection.openlink.getProfiles(getDefaultSystem(), resource, "true", "1234", "123456", function(profiles) {
+    Session.connection.openlink.getProfiles(getDefaultSystem(), resource, mobilityLogin, mobilityDeviceNum, mobilityDirectoryNumber, function(profiles) {
         document.getElementById('gc_profile_list').innerHTML = "";
         for (var profileId in profiles) {
             var profile = profiles[profileId];

@@ -144,6 +144,7 @@ Strophe.addConnectionPlugin('openlink', {
      * @param errorCallback called on error.
      */
     getProfiles: function (to, resource, login, deviceNum, directoryNumber, successCallback, errorCallback) {
+        var login = login? login:"false";
         var gp_iq = $iq({
             to : to,
             type : "set",
@@ -155,12 +156,18 @@ Strophe.addConnectionPlugin('openlink', {
         }).c("iodata", {
             xmlns : "urn:xmpp:tmp:io-data",
             type : "input"
-        }).c("in").c("jid").t(Strophe.getBareJidFromJid(this._connection.jid) + "/" + resource).up()
-        .c("mobility", {
-            login : login,
-            devicenum : deviceNum,
-            directorynumber : directoryNumber
-        });
+        }).c("in").c("jid").t(Strophe.getBareJidFromJid(this._connection.jid) + "/" + resource).up();
+        if (login === "false") {
+            gp_iq.c("mobility", {
+                login : login
+            });
+        } else if (login === "true") {
+            gp_iq.c("mobility", {
+                login : login,
+                devicenum : deviceNum,
+                directorynumber : directoryNumber
+            });
+        };
 
         var self = this;
         var _successCallback = function(iq) {
