@@ -230,6 +230,35 @@ App.getProfilesClick = function() {
                 profileActionsUl.appendChild(profileActionsLi);
             }
 
+            if (profile.device === "vmstsp") {
+                var recordUl = document.createElement('ul');
+                var recordLi = document.createElement('li');
+                var recordText = document.createTextNode(profile.id + ' - ');
+
+                var recordBtn = document.createElement('a');
+                recordBtn.href = "#";
+                recordBtn.className = "gc_record";
+                recordBtn.id = "gc_record_" + profile.id;
+                recordBtn.innerHTML = "Record";
+                var recordLabel = document.createElement('input');
+                recordLabel.type = "text";
+                recordLabel.maxlength = "50";
+                recordLabel.id = "record_label_" + profile.id;
+                recordLabel.placeholder = "Label";
+                var recordNumber = document.createElement('div');
+                recordNumber.id = "recording_number";
+
+                recordLi.appendChild(recordText);
+                recordLi.appendChild(recordBtn);
+                recordLi.appendChild(recordLabel);
+                recordLi.appendChild(recordNumber);
+                recordUl.appendChild(recordLi);
+                document.getElementById('gc_recording').appendChild(recordUl);
+
+                var getRecordNumber = document.getElementById('gc_record_' + profile.id);
+                getRecordNumber.addEventListener('click', App.record);
+            }
+
             profileLi.appendChild(profileText);
             profileLi.appendChild(featuresBtn);
             profileLi.appendChild(featuresInterestsDiv);
@@ -262,7 +291,7 @@ App.getProfilesVmsClick = function() {
 
     var resource = document.getElementById('resource').value;
 
-    Session.connection.openlink.getProfiles(getVMSSystem(), resource,function(profiles) {        
+    Session.connection.openlink.getProfiles(getVMSSystem(), '', '', resource, function(profiles) {        
         for (var profileId in profiles) {
             var profile = profiles[profileId];
 
